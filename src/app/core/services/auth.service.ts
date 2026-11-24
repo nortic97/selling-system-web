@@ -25,6 +25,13 @@ export class AuthService {
   readonly selectedCompany = this._selectedCompany.asReadonly();
 
   /**
+   * Actualiza la empresa seleccionada directamente desde la respuesta de esStore.
+   */
+  setSelectedCompanyFromStore(company: CompanyInfo): void {
+    this._selectedCompany.set(company);
+  }
+
+  /**
    * Consulta y valida la existencia de la empresa a partir del NIT o identificador.
    */
   verifyCompany(nit: string): Observable<CompanyInfo> {

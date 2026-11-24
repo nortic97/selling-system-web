@@ -8,6 +8,7 @@ export const environment = {
     },
     esStore: {
       basePath: 'http://localhost:8082/api/v1/es/store',
+      getStoreByTaxIdAndTaxType: '/tax-id/:taxType/:taxId',
     },
     esBranch: {
       basePath: 'http://localhost:8083/api/v1/es/branch',

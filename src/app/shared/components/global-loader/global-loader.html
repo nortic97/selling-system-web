@@ -1,0 +1,33 @@
+@if (loaderService.isLoading()) {
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm transition-all duration-300"
+    role="status"
+    aria-live="polite"
+    aria-label="Procesando solicitud"
+  >
+    <div class="relative bg-slate-900/95 border border-slate-800 rounded-2xl p-6 sm:p-8 max-w-sm w-full mx-4 shadow-2xl shadow-emerald-950/20 text-center flex flex-col items-center">
+      <!-- Glow decorativo emerald -->
+      <div class="absolute -top-10 -left-10 w-32 h-32 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" aria-hidden="true"></div>
+      <div class="absolute -bottom-10 -right-10 w-32 h-32 rounded-full bg-teal-500/10 blur-2xl pointer-events-none" aria-hidden="true"></div>
+
+      <!-- Spinner B2B -->
+      <div class="relative w-14 h-14 mb-4">
+        <div class="w-14 h-14 rounded-full border-4 border-slate-800" aria-hidden="true"></div>
+        <div class="w-14 h-14 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin absolute inset-0" aria-hidden="true"></div>
+        <div class="absolute inset-0 flex items-center justify-center">
+          <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" aria-hidden="true"></span>
+        </div>
+      </div>
+
+      <!-- Mensaje dinámico -->
+      <h3 class="text-base font-semibold text-white tracking-tight">
+        {{ loaderService.message() || 'Cargando información...' }}
+      </h3>
+      <p class="text-xs text-slate-400 mt-1">
+        Por favor espere mientras nos comunicamos con el servicio comercial.
+      </p>
+
+      <span class="sr-only">Cargando...</span>
+    </div>
+  </div>
+}

@@ -2,19 +2,26 @@ import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
+import { StoreService } from '../../../../core/services/store.service';
+import { TaxTypeEnum, TaxType } from '../../../../core/models/company-store.model';
+import { NgOptimizedImage } from '@angular/common';
 
 @Component({
   selector: 'app-employee-login',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, NgOptimizedImage],
   templateUrl: './login.html',
-  styleUrl: './login.scss'
+  styleUrl: './login.scss',
 })
 export class EmployeeLogin {
   private readonly fb = inject(NonNullableFormBuilder);
   readonly authService = inject(AuthService);
+  readonly storeService = inject(StoreService);
   private readonly router = inject(Router);
 
-  // Pasos del flujo: 'company' (Paso 1: NIT) | 'credentials' (Paso 2: Cajero y PIN)
+  // Opciones de tipo de identificación tributaria (NIT, RFC, NIF, CUIT, SSN, RUT)
+  readonly taxTypeOptions = Object.values(TaxTypeEnum);
+
+  // Pasos del flujo: 'company' (Paso 1: Empresa) | 'credentials' (Paso 2: Cajero y PIN)
   readonly currentStep = signal<'company' | 'credentials'>('company');
 
   // Señales reactivas de estado
@@ -22,28 +29,55 @@ export class EmployeeLogin {
   readonly isLoading = signal(false);
   readonly showPin = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly logoLoadFailed = signal(false);
 
-  // Formulario Paso 1: Identificación de Empresa
+  // Formulario Paso 1: Identificación de Empresa (Tipo, Número y Dígito de Verificación)
   readonly companyForm = this.fb.group({
-    nit: ['', [Validators.required, Validators.minLength(5)]]
+    taxType: [TaxTypeEnum.NIT as TaxType, [Validators.required]],
+    taxNumber: ['', [Validators.required, Validators.minLength(3)]],
+    verificationDigit: ['', [Validators.maxLength(1), Validators.pattern(/^[0-9]?$/)]],
   });
 
   // Formulario Paso 2: Autenticación de Colaborador
   readonly employeeForm = this.fb.group({
     cashierCode: ['', [Validators.required, Validators.minLength(3)]],
     pin: ['', [Validators.required, Validators.minLength(4)]],
-    rememberMe: [false]
+    rememberMe: [false],
   });
 
   constructor() {
-    // Si ya existe una empresa seleccionada, avanza al paso de credenciales
-    if (this.authService.selectedCompany()) {
+    // Si ya existe una empresa seleccionada (memoria o localStorage), avanza al paso de credenciales
+    const stored = this.storeService.currentStore();
+    if (stored) {
+      this.authService.setSelectedCompanyFromStore({
+        nit: stored.taxId,
+        name: stored.name,
+        tradeName: stored.legalName,
+        status: 'active',
+      });
       this.currentStep.set('credentials');
     }
   }
 
+  get taxTypeControl() {
+    return this.companyForm.controls.taxType;
+  }
+
+  get taxNumberControl() {
+    return this.companyForm.controls.taxNumber;
+  }
+
+  get verificationDigitControl() {
+    return this.companyForm.controls.verificationDigit;
+  }
+
+  // Getters de compatibilidad con pruebas unitarias
   get nitControl() {
-    return this.companyForm.controls.nit;
+    return this.companyForm.controls.taxNumber;
+  }
+
+  get taxIdControl() {
+    return this.companyForm.controls.taxNumber;
   }
 
   get cashierControl() {
@@ -54,8 +88,10 @@ export class EmployeeLogin {
     return this.employeeForm.controls.pin;
   }
 
-  isCompanyFieldInvalid(): boolean {
-    const control = this.nitControl;
+  isCompanyFieldInvalid(
+    fieldName: 'taxType' | 'taxNumber' | 'verificationDigit' = 'taxNumber',
+  ): boolean {
+    const control = this.companyForm.get(fieldName);
     return !!(control && control.invalid && (control.touched || control.dirty));
   }
 
@@ -68,8 +104,12 @@ export class EmployeeLogin {
     this.showPin.update((visible) => !visible);
   }
 
+  onLogoError(): void {
+    this.logoLoadFailed.set(true);
+  }
+
   /**
-   * Paso 1: Valida la existencia de la empresa asociada al NIT.
+   * Paso 1: Valida la existencia de la empresa asociada al taxType, taxNumber y verificationDigit contra esStore.
    */
   onVerifyCompany(): void {
     this.errorMessage.set(null);
@@ -80,11 +120,23 @@ export class EmployeeLogin {
     }
 
     this.isVerifyingCompany.set(true);
-    const { nit } = this.companyForm.getRawValue();
+    const { taxType, taxNumber, verificationDigit } = this.companyForm.getRawValue();
 
-    this.authService.verifyCompany(nit).subscribe({
-      next: () => {
+    // Si tiene dígito de verificación, se concatena con guion como identificador completo
+    const cleanNumber = taxNumber.trim();
+    const cleanDv = verificationDigit ? verificationDigit.trim() : '';
+    const fullTaxId = cleanDv ? `${cleanNumber}-${cleanDv}` : cleanNumber;
+
+    this.storeService.getStoreByTax(taxType, fullTaxId).subscribe({
+      next: (store) => {
         this.isVerifyingCompany.set(false);
+        this.logoLoadFailed.set(false);
+        this.authService.setSelectedCompanyFromStore({
+          nit: store.taxId,
+          name: store.name,
+          tradeName: store.legalName,
+          status: 'active',
+        });
         this.currentStep.set('credentials');
       },
       error: (err: unknown) => {
@@ -95,18 +147,21 @@ export class EmployeeLogin {
             : undefined;
 
         this.errorMessage.set(
-          backendMessage ?? 'No se encontró la empresa registrada con ese NIT o identificador.'
+          backendMessage ??
+            'No se encontró la empresa registrada con el tipo y número de identificación suministrados.',
         );
-      }
+      },
     });
   }
 
   /**
-   * Permite volver al paso 1 para modificar el NIT.
+   * Permite volver al paso 1 para modificar la empresa seleccionada.
    */
   onChangeCompany(): void {
+    this.storeService.clearStore();
     this.authService.clearCompany();
     this.errorMessage.set(null);
+    this.logoLoadFailed.set(false);
     this.employeeForm.reset();
     this.currentStep.set('company');
   }
@@ -124,7 +179,8 @@ export class EmployeeLogin {
 
     this.isLoading.set(true);
     const credentials = this.employeeForm.getRawValue();
-    const companyNit = this.authService.selectedCompany()?.nit;
+    const companyNit =
+      this.storeService.currentStore()?.taxId ?? this.authService.selectedCompany()?.nit;
 
     this.authService.loginEmployee({ ...credentials, companyNit }).subscribe({
       next: () => {
@@ -139,9 +195,9 @@ export class EmployeeLogin {
             : undefined;
 
         this.errorMessage.set(
-          backendMessage ?? 'Credenciales de empleado o PIN incorrectos. Verifique sus datos.'
+          backendMessage ?? 'Credenciales de empleado o PIN incorrectos. Verifique sus datos.',
         );
-      }
+      },
     });
   }
 }

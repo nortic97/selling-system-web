@@ -54,7 +54,7 @@ export class Login {
     this.isLoading.set(true);
     const { username, password, rememberMe } = this.loginForm.getRawValue();
 
-    this.authService.login({ email: username, password, rememberMe }).subscribe({
+    this.authService.login({ username: username, password, rememberMe }).subscribe({
       next: () => {
         this.isLoading.set(false);
         this.router.navigate(['/owner']);

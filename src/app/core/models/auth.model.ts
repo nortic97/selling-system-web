@@ -7,7 +7,7 @@ export interface CompanyInfo {
 
 export interface LoginCredentials {
   companyNit?: string;
-  email: string;
+  username: string;
   password: string;
   rememberMe?: boolean;
 }

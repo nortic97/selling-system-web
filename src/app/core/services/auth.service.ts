@@ -67,7 +67,7 @@ export class AuthService {
       token: 'jwt-owner-token-sample',
       user: {
         id: 'usr-owner-101',
-        username: credentials.email,
+        username: credentials.username,
         name: 'Administrador Propietario',
         role: 'owner',
         companyNit: credentials.companyNit ?? this._selectedCompany()?.nit

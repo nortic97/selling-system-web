@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { authGuard } from '../../core/guards/auth.guard';
 
 export const ownerRoutes: Routes = [
   {
@@ -7,8 +8,14 @@ export const ownerRoutes: Routes = [
     title: 'Selling System POS | Acceso Propietario',
   },
   {
+    path: 'dashboard',
+    loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.Dashboard),
+    canActivate: [authGuard],
+    title: 'Selling System B2B | Panel Propietario',
+  },
+  {
     path: '',
-    redirectTo: 'login',
+    redirectTo: 'dashboard',
     pathMatch: 'full',
   },
 ];

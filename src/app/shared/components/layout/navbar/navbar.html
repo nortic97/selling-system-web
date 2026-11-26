@@ -1,0 +1,102 @@
+<header class="sticky top-0 z-20 flex h-16 w-full flex-shrink-0 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur transition-colors dark:border-slate-800 dark:bg-slate-900/95 sm:px-6">
+  <!-- Izquierda: Botón hamburguesa y títulos -->
+  <div class="flex items-center gap-3">
+    <button
+      type="button"
+      (click)="onToggle()"
+      aria-label="Abrir menú de navegación"
+      class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 lg:hidden"
+    >
+      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+
+    <div>
+      <div class="flex items-center gap-2">
+        <h1 class="text-base font-bold text-slate-900 dark:text-white sm:text-lg">
+          {{ title() }}
+        </h1>
+        @if (variant() === 'owner') {
+          <span class="inline-flex items-center rounded-md bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700 dark:bg-brand-950/60 dark:text-brand-300 border border-brand-200/60 dark:border-brand-800/60">
+            B2B Suite
+          </span>
+        } @else {
+          <span class="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+            POS Terminal
+          </span>
+        }
+      </div>
+      @if (subtitle()) {
+        <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
+          {{ subtitle() }}
+        </p>
+      }
+    </div>
+  </div>
+
+  <!-- Derecha: Información de Tienda, Perfil de Usuario y Logout -->
+  <div class="flex items-center gap-3 sm:gap-4">
+    <!-- Indicador de Tienda / Sucursal activa con selector -->
+    @if (currentStore(); as store) {
+      <button
+        type="button"
+        (click)="onChangeStore()"
+        title="Cambiar sucursal activa"
+        class="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 transition-colors hover:border-brand-400 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-700 md:flex cursor-pointer"
+      >
+        <svg class="h-4 w-4 text-brand-600 dark:text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+        <span class="font-medium truncate max-w-[140px]">{{ store.name }}</span>
+        <span class="text-slate-400">|</span>
+        <span class="font-mono text-[11px] text-slate-500">{{ storeTaxIdentifier() }}</span>
+        <svg class="h-3 w-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+    } @else if (variant() === 'owner') {
+      <button
+        type="button"
+        (click)="onChangeStore()"
+        class="hidden items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-300 md:flex cursor-pointer animate-pulse"
+      >
+        <svg class="h-4 w-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <span>Elegir Tienda</span>
+      </button>
+    }
+
+    <!-- Usuario autenticado -->
+    <div class="flex items-center gap-2.5">
+      <div class="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white shadow-sm ring-2 ring-brand-100 dark:ring-brand-950">
+        {{ userDisplayName().charAt(0).toUpperCase() }}
+      </div>
+      <div class="hidden text-left sm:block">
+        <p class="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-tight">
+          {{ userDisplayName() }}
+        </p>
+        <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
+          {{ userRoleLabel() }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Separador -->
+    <div class="h-6 w-px bg-slate-200 dark:bg-slate-800"></div>
+
+    <!-- Botón Cerrar Sesión -->
+    <button
+      type="button"
+      (click)="onLogout()"
+      title="Cerrar sesión"
+      class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 text-xs font-medium text-slate-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-400 dark:border-slate-700 dark:text-slate-300 dark:hover:border-red-900/50 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+    >
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+      </svg>
+      <span class="hidden sm:inline">Salir</span>
+    </button>
+  </div>
+</header>

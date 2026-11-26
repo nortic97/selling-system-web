@@ -1,0 +1,25 @@
+<div class="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100">
+  <!-- Barra lateral (Sidebar) -->
+  <app-sidebar
+    class="h-full flex-shrink-0"
+    [variant]="variant()"
+    [isOpen]="sidebarOpen()"
+    (closeSidebar)="closeSidebar()"
+  />
+
+  <!-- Contenedor principal con Navbar y contenido dinámico -->
+  <div class="flex flex-1 min-w-0 flex-col h-full overflow-hidden">
+    <app-navbar
+      [variant]="variant()"
+      [title]="pageTitle()"
+      [subtitle]="pageSubtitle()"
+      (toggleSidebar)="toggleSidebar()"
+    />
+
+    <main class="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-8">
+      <div class="mx-auto max-w-7xl">
+        <ng-content />
+      </div>
+    </main>
+  </div>
+</div>

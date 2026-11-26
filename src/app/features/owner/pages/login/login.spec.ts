@@ -33,12 +33,12 @@ describe('Login (Owner)', () => {
     expect(component.loginForm.valid).toBe(false);
   });
 
-  it('should validate email format', () => {
+  it('should validate username field', () => {
     const emailControl = component.emailControl;
-    emailControl.setValue('correo-invalido');
+    emailControl.setValue('');
     expect(emailControl.valid).toBe(false);
 
-    emailControl.setValue('propietario@empresa.com');
+    emailControl.setValue('admin');
     expect(emailControl.valid).toBe(true);
   });
 

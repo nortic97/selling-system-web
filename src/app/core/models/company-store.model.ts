@@ -1,3 +1,5 @@
+export * from './store-page.model';
+
 export enum TaxTypeEnum {
   NIT = 'NIT',
   RFC = 'RFC',

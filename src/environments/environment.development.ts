@@ -28,5 +28,12 @@ export const environment = {
     esFeature: {
       basePath: 'http://localhost:8088/api/v1/es/feature',
     },
+    msAuth: {
+      basePath: 'http://localhost:8080/api/v1/auth',
+      loginUser: '/login/user',
+      loginEmployee: '/login/employee',
+      refreshToken: '/refresh-token',
+      logout: '/logout',
+    },
   },
 };

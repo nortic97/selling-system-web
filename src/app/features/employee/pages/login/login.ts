@@ -185,7 +185,7 @@ export class EmployeeLogin {
     this.authService.loginEmployee({ ...credentials, companyNit }).subscribe({
       next: () => {
         this.isLoading.set(false);
-        this.router.navigate(['/']);
+        this.router.navigate(['/employee/dashboard']);
       },
       error: (err: unknown) => {
         this.isLoading.set(false);

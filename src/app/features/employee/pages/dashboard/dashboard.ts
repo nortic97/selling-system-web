@@ -5,6 +5,7 @@ import { B2bShell } from '../../../../shared/components/layout/b2b-shell/b2b-she
 import { AuthService } from '../../../../core/services/auth.service';
 import { StoreService } from '../../../../core/services/store.service';
 import { TokenService } from '../../../../core/services/token.service';
+import { EmployeeWorkspaceService } from '../../../../core/services/employee-workspace.service';
 
 export interface PosTransaction {
   id: string;
@@ -27,6 +28,7 @@ export class EmployeeDashboard {
   private readonly authService = inject(AuthService);
   private readonly storeService = inject(StoreService);
   readonly tokenService = inject(TokenService);
+  readonly workspaceService = inject(EmployeeWorkspaceService);
 
   readonly currentStore = computed(() => {
     return this.storeService.currentStore() ?? this.authService.selectedCompany();
@@ -35,6 +37,14 @@ export class EmployeeDashboard {
   readonly currentUser = computed(() => {
     return this.authService.currentUser();
   });
+
+  readonly workspaces = this.workspaceService.currentWorkspaces;
+  readonly activeWorkspace = this.workspaceService.activeWorkspace;
+
+  constructor() {
+    const employeeId = this.tokenService.userId() || '9c58b456-42d1-4be3-a8df-6bf9618c7d00';
+    this.workspaceService.getWorkspacesByEmployee(employeeId).subscribe();
+  }
 
   // Métricas de turno en Signals
   readonly shiftStats = signal({

@@ -4,11 +4,10 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { StoreService } from '../../../../core/services/store.service';
 import { TaxTypeEnum, TaxType } from '../../../../core/models/company-store.model';
-import { NgOptimizedImage } from '@angular/common';
 
 @Component({
   selector: 'app-employee-login',
-  imports: [ReactiveFormsModule, RouterLink, NgOptimizedImage],
+  imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './login.html',
   styleUrl: './login.scss',
 })
@@ -50,8 +49,8 @@ export class EmployeeLogin {
     const stored = this.storeService.currentStore();
     if (stored) {
       this.authService.setSelectedCompanyFromStore({
-        nit: stored.taxId,
-        name: stored.name,
+        nit: stored.taxId ?? '',
+        name: stored.name ?? '',
         tradeName: stored.legalName,
         status: 'active',
       });
@@ -132,8 +131,8 @@ export class EmployeeLogin {
         this.isVerifyingCompany.set(false);
         this.logoLoadFailed.set(false);
         this.authService.setSelectedCompanyFromStore({
-          nit: store.taxId,
-          name: store.name,
+          nit: store.taxId ?? '',
+          name: store.name ?? '',
           tradeName: store.legalName,
           status: 'active',
         });

@@ -8,10 +8,16 @@ import {
   CompanyInfo,
   EmployeeLoginCredentials,
   LoginCredentials,
-  AuthRequestUser,
-  AuthRequestEmployee,
-  AuthTokenPayload
+  RestModelLoginRequestDTO,
+  RestModelEmployeeLoginRequestDTO,
+  RestModelTokenExchangeRequestDTO,
+  RestModelLoginResponseDTO,
+  LoginRequestDTO,
+  EmployeeLoginRequestDTO,
+  LoginResponseDTO,
+  TokenExchangeRequestDTO
 } from '../models/auth.model';
+import { CompanyStore, StoreSummary } from '../models/company-store.model';
 import { TokenService } from './token.service';
 import { MenuService } from './menu.service';
 
@@ -49,7 +55,7 @@ export class AuthService {
   }
 
   /**
-   * Limpia la empresa actualmente seleccionada.
+   * Limpia la empresa actualmente seleccionada en memoria.
    */
   clearCompany(): void {
     this._selectedCompany.set(null);
@@ -57,21 +63,24 @@ export class AuthService {
 
   /**
    * Endpoint oficial para inicio de sesión de usuario normal / propietario.
-   * Conecta con la URL configurada en environment (msAuth) y permite fallback simulado.
+   * Conecta con la URL configurada en environment (msAuth) y envía Correlation-Id y Consumer-Id.
    */
-  authenticateUser(request: AuthRequestUser): Observable<AuthResponse> {
+  authenticateUser(request: RestModelLoginRequestDTO): Observable<RestModelLoginResponseDTO> {
     const { basePath, loginUser } = environment.services.msAuth;
     const url = `${basePath}${loginUser}`;
 
+    const correlationId = this.generateUuid();
+
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
+      'Correlation-Id': correlationId,
       'Consumer-Id': 'selling-system-web'
     });
 
-    return this.http.post<AuthResponse>(url, request, { headers }).pipe(
+    return this.http.post<RestModelLoginResponseDTO>(url, request, { headers }).pipe(
       tap((res) => {
         this.tokenService.saveSession(res);
-        this.syncUserFromToken();
+        this.syncUserFromToken(request.username, 'owner');
       }),
       // Fallback para desarrollo cuando el backend aún no está levantado
       catchError(() => {
@@ -81,21 +90,26 @@ export class AuthService {
   }
 
   /**
-   * Endpoint oficial para inicio de sesión de empleado / cajero con storeId.
+   * Endpoint oficial para inicio de sesión de empleado / cajero con storeId UUID.
    */
-  authenticateEmployee(request: AuthRequestEmployee): Observable<AuthResponse> {
+  authenticateEmployee(
+    request: RestModelEmployeeLoginRequestDTO
+  ): Observable<RestModelLoginResponseDTO> {
     const { basePath, loginEmployee } = environment.services.msAuth;
     const url = `${basePath}${loginEmployee}`;
 
+    const correlationId = this.generateUuid();
+
     const headers = new HttpHeaders({
       'Content-Type': 'application/json',
+      'Correlation-Id': correlationId,
       'Consumer-Id': 'selling-system-web'
     });
 
-    return this.http.post<AuthResponse>(url, request, { headers }).pipe(
+    return this.http.post<RestModelLoginResponseDTO>(url, request, { headers }).pipe(
       tap((res) => {
         this.tokenService.saveSession(res);
-        this.syncUserFromToken();
+        this.syncUserFromToken(request.username, 'staff', request.storeId);
       }),
       // Fallback para desarrollo cuando el backend aún no está levantado
       catchError(() => {
@@ -105,10 +119,40 @@ export class AuthService {
   }
 
   /**
+   * Endpoint oficial para intercambiar y enriquecer un token con un roleId específico.
+   * Requiere header Authorization: Bearer <token>.
+   */
+  exchangeToken(roleId: string): Observable<RestModelLoginResponseDTO> {
+    const { basePath, tokenExchange } = environment.services.msAuth;
+    const url = `${basePath}${tokenExchange}`;
+    const token = this.tokenService.getToken() ?? '';
+
+    const correlationId = this.generateUuid();
+
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Correlation-Id': correlationId,
+      'Consumer-Id': 'selling-system-web',
+      Authorization: `Bearer ${token}`
+    });
+
+    const body: RestModelTokenExchangeRequestDTO = {
+      token,
+      roleId
+    };
+
+    return this.http.post<RestModelLoginResponseDTO>(url, body, { headers }).pipe(
+      tap((res) => {
+        this.tokenService.saveSession(res);
+      })
+    );
+  }
+
+  /**
    * Flujo de inicio de sesión de usuario / propietario (compatibilidad con vistas existentes).
    */
-  login(credentials: LoginCredentials): Observable<AuthResponse> {
-    const request: AuthRequestUser = {
+  login(credentials: LoginCredentials): Observable<LoginResponseDTO> {
+    const request: RestModelLoginRequestDTO = {
       username: credentials.username,
       password: credentials.password,
       accessType: 'SYSTEM'
@@ -129,14 +173,25 @@ export class AuthService {
 
   /**
    * Flujo de inicio de sesión de empleado (compatibilidad con vistas existentes).
+   * Obtiene el storeId de la tienda persistida en localStorage o asignada en el flujo previo.
    */
-  loginEmployee(credentials: EmployeeLoginCredentials): Observable<AuthResponse> {
-    const storeId = credentials.companyNit ?? this._selectedCompany()?.nit ?? 'default-store-id';
-    const request: AuthRequestEmployee = {
-      storeId: storeId,
+  loginEmployee(credentials: EmployeeLoginCredentials): Observable<LoginResponseDTO> {
+    const storedStore = this.getStoredStore();
+    const candidateStoreId = credentials.companyNit;
+
+    // Si companyNit es un UUID válido se usa directamente, de lo contrario se obtiene de la tienda persistida
+    let storeId = '3fa85f64-5717-4562-b3fc-2c963f66afa6';
+    if (candidateStoreId && this.isValidUuid(candidateStoreId)) {
+      storeId = candidateStoreId;
+    } else if (storedStore?.id && this.isValidUuid(storedStore.id)) {
+      storeId = storedStore.id;
+    }
+
+    const request: RestModelEmployeeLoginRequestDTO = {
+      storeId,
       username: credentials.cashierCode,
       password: credentials.pin,
-      accessType: 'SYSTEM'
+      accessType: 'POS'
     };
 
     return this.authenticateEmployee(request).pipe(
@@ -154,6 +209,7 @@ export class AuthService {
 
   /**
    * Cierra la sesión activa revocando cookies y menús.
+   * La tienda del empleado se mantiene persistida en localStorage según requerimiento.
    */
   logout(): void {
     this.tokenService.clearSession();
@@ -175,12 +231,12 @@ export class AuthService {
     username: string,
     role: 'owner' | 'staff',
     storeId?: string
-  ): Observable<AuthResponse> {
+  ): Observable<RestModelLoginResponseDTO> {
     this.tokenService.simulateSession();
     this.syncUserFromToken(username, role, storeId);
 
     const token = this.tokenService.getToken() ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.simulated';
-    const simulatedRes: AuthResponse = {
+    const simulatedRes: RestModelLoginResponseDTO = {
       token: token,
       refreshToken: this.tokenService.getRefreshToken() ?? 'simulated-refresh-token',
       tokenType: 'Bearer'
@@ -192,7 +248,11 @@ export class AuthService {
   /**
    * Sincroniza los datos del usuario a partir del payload decodificado del JWT en cookie.
    */
-  private syncUserFromToken(usernameFallback?: string, roleFallback: 'owner' | 'staff' = 'owner', storeFallback?: string): void {
+  private syncUserFromToken(
+    usernameFallback?: string,
+    roleFallback: 'owner' | 'staff' = 'owner',
+    storeFallback?: string
+  ): void {
     const payload = this.tokenService.payload();
     if (payload) {
       this._currentUser.set({
@@ -218,5 +278,35 @@ export class AuthService {
       }
     }
     return null;
+  }
+
+  private getStoredStore(): CompanyStore | StoreSummary | null {
+    try {
+      const stored =
+        localStorage.getItem('selected_company_store') ||
+        localStorage.getItem('employee_selected_company');
+      if (stored) {
+        return JSON.parse(stored) as CompanyStore | StoreSummary;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+
+  private isValidUuid(value: string): boolean {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(value);
+  }
+
+  private generateUuid(): string {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
   }
 }

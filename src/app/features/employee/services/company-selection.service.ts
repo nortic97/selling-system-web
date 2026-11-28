@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { CompanyStore, TaxType } from '../../../core/models/company-store.model';
+import { CompanyStore, StoreSummary, TaxType } from '../../../core/models/company-store.model';
 import { StoreService } from '../../../core/services/store.service';
 
 /**
@@ -20,7 +20,7 @@ export class CompanySelectionService {
     return this.storeService.getStoreByTax(taxType, taxId);
   }
 
-  setSelectedCompany(company: CompanyStore): void {
+  setSelectedCompany(company: CompanyStore | StoreSummary): void {
     this.storeService.setCurrentStore(company);
   }
 
@@ -28,7 +28,7 @@ export class CompanySelectionService {
     this.storeService.clearStore();
   }
 
-  getStoredCompany(): CompanyStore | null {
+  getStoredCompany(): CompanyStore | StoreSummary | null {
     return this.storeService.getStoredStore();
   }
 }

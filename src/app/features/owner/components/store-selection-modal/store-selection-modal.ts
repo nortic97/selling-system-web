@@ -31,14 +31,14 @@ export class StoreSelectionModal {
   // Filtro reactivo en el contenido actual
   readonly filteredStores = computed<StoreSummary[]>(() => {
     const pageData = this.storePage();
-    if (!pageData) return [];
+    if (!pageData || !pageData.content) return [];
     const query = this.searchQuery().trim().toLowerCase();
     if (!query) return pageData.content;
 
     return pageData.content.filter((store) => {
-      const nameMatch = store.name.toLowerCase().includes(query);
-      const nitMatch = store.taxId.toLowerCase().includes(query);
-      const cityMatch = store.city?.toLowerCase().includes(query) ?? false;
+      const nameMatch = store.name ? store.name.toLowerCase().includes(query) : false;
+      const nitMatch = store.taxId ? store.taxId.toLowerCase().includes(query) : false;
+      const cityMatch = store.city ? store.city.toLowerCase().includes(query) : false;
       return nameMatch || nitMatch || cityMatch;
     });
   });

@@ -1,4 +1,5 @@
 export * from './store-page.model';
+export * from './store.model';
 
 export enum TaxTypeEnum {
   NIT = 'NIT',
